@@ -1,0 +1,206 @@
+---
+title: "Group 19 Project"
+author: "Lydia Lin, Thibault Busidan and Vanshika Arora"
+date: "`r Sys.Date()`"
+output: openintro::lab_report
+---
+
+```{r load-packages, message=FALSE}
+library(tidyverse)
+library(openintro)
+library(ggplot2)
+library (ggpubr)
+library(BSDA)
+```
+
+### Problem 1: Read in and Prepare Data
+a)
+```{r PR}
+PDat <-read.csv("fish.csv")
+as.factor("YrCaught")
+as.factor("YrTagged")
+as.factor("Site")
+as.factor("AgeP")
+```
+b) 
+```{r filter}
+PDat$YrCaught <- factor(PDat$YrCaught)
+Pdat.f <- PDat %>% filter(YrCaught == "1")
+glimpse(Pdat.f)
+```
+c)
+```{r na}
+sum(is.na(PDat$Weight))
+sum(is.na(PDat$Length))
+sum(is.na(PDat$Site))
+sum(is.na(PDat$AgeP))
+tab <- matrix(c(2789,0,0,0),ncol=4,byrow=TRUE)
+```
+
+### Problem 3:  EDA
+#### Part 3a)
+```{r Univariate EDA}
+h0 <- ggplot (data = PDat, aes(x = AgeP)) +
+  geom_histogram(bins = 6, colour = 1, fill = "blue") + xlab("AgeP")
+h0
+h1 <- ggplot(data = PDat, aes(x = Weight)) +
+  geom_histogram(bins = 6, colour = 1, fill = "blue") + xlab("Weight(g)")
+h1
+h2<- ggplot(data=PDat, aes(x=Length))+ geom_histogram(bins=6,colour=1,fill="blue")+xlab("length(mm)")
+h2
+ggarrange(h0,h1,h2)
+```
+
+#### Part 3b)
+```{r Bivariate EDA}
+plot(PDat$Length, PDat$Weight, pch = 19, xlab = "Length", ylab = "Weight", cex.axis = 1.25, cex.lab = 1.2, cex = 1.25)
+```
+
+### Problem 4:  Regression of Weight on Length
+#### Part 4a)
+```{r Scatterplot}
+plot(log(PDat$Length), log(PDat$Weight), xlab="ln(Length (mm))", pch=19,
+     ylab="ln(Weight (g))", cex.lab=1.25, cex.axis=1.25)
+```
+Natural log of length and natural log of weight show a positive association. The relationship looks linear with little spread.
+
+#### Part 4b)
+```{r Reg W on L}
+lm2.out <- lm(log(PDat$Weight) ~ log(PDat$Length))
+summary(lm2.out)
+plot(log(PDat$Length), log(PDat$Weight), 
+     xlab="ln(Length (mm))",
+     ylab="ln(Weight (g))", pch=19)
+abline(lm2.out, lwd=2, col="blue")
+points(mean(log(PDat$Length)), mean(log(PDat$Weight)),
+       pch=19, col="green")
+```
+The regression equation is: ln(ŷ) = -11.40 + 2.99(ln(x))
+The slope tells us that every time we increase natural log of length by 1 mm, our weight is expected to increase by ln(2.99) grams.
+
+#### Part 4c)
+```{r Reg Diagnostics}
+### Residual Plot with x values
+par(mfrow=c(2,2))
+plot(log(PDat$Length), log(PDat$Weight), xlab="ln(Length (mm))", pch=19,
+     ylab="ln(Weight (g))", cex.lab=1.25, cex.axis=1.25)
+abline(lm2.out, col="blue", lwd=2)
+plot(fitted(lm2.out), residuals(lm2.out),
+     xlab="Fitted Values", ylab="Residuals")
+abline(h=0)
+### Histogram of residuals
+hist(residuals(lm2.out), xlab="Residuals", main="")
+qqnorm(residuals(lm2.out))
+qqline(residuals(lm2.out))
+```
+There are very few points that are far from the regression line and none of them are outliers. The number of positive residuals seems to be equal to the number of negative residuals throughout the . The histogram of our residuals is symmetric and unimodal with almost all values between -0.25 and 0.25. Natural log of weight is normally distributed. This suggests that the relationship is linear.
+
+#### Part 4d)
+H_0: Beta1 = 0 versus H_A: Beta1 > 0.
+The slope of weight on length is greater than zero (2.99). The t value is 397.3, the p value is
+2e-16 and there are 2554 degrees of freedom. Since the p value is smaller than the 5%
+significance level, we reject the null hypothesis. There is strong evidence that the regression
+slope of natural log of weight on natural log of length is greater than 0.
+
+```{r Beta1 EQ 0}
+summary(lm2.out)
+```
+#### Part 4e)
+Calculating p value
+```{r Beta1 EQ 3}
+summary(lm2.out)
+### new t value
+(2.997860-3)/0.007546
+### new p-value
+1-pt(-0.283594, 2554)
+```
+H_0: Beta1 = 3 versus H_A: Beta1 ≠ 3.
+The slope of weight on length is close to 3 (2.99). Calculating the t value by hand, using the
+equation t = (Beta1 - null hypothesized value of Beta1) / Standard Error, the result is t =
+-0.283594. Using R to calculate p with 2554 degrees of freedom, the result is p = 0.6116277.
+Since the p value is larger than the 5% significance level we fail to reject the null hypothesis.
+There is not enough evidence that the regression slope of natural log of weight on natural log of
+length is not equal to 3.
+
+#### Part 4f)
+Using the regression equation in part (b) the expected mean weight of a juvenile steelhead that has a
+fork length of 70 mm is 3.79 grams.
+```{r CI and PI}
+lm3.out <- lm(Weight ~ Length, data=data.frame(PDat))
+new.length <- data.frame(Length = c(70))
+(CI.length70 <- predict(lm3.out, newdata = new.length, interval = "confidence", level = 0.95))
+
+lm4.out <- lm(Weight ~ Length, data=data.frame(PDat))
+new.length1 <- data.frame(Length = c(70))
+(PI.length70 <- predict(lm4.out, newdata = new.length, interval = "prediction", level = 0.95))
+```
+We are 95% confident that the mean weight for a fish length of 70 mm falls between 3.62 and 6.97 grams.
+There is a 95% probability that a randomly selected fish with a length of 70 mm will have a weight between 0 and 11.79 grams. We do not include the lower bound because we assume that weight for fish cannot be negative.
+
+### Problem 5:  Fish Length and Site
+#### Part 5a)
+```{r FL by Site}
+ggplot(data = PDat, aes(x=Length, y=Site)) +
+        geom_boxplot() + 
+        xlab("Fish Length (mm)") +
+        ylab("Site")
+```
+From the comparative boxplots of fish length by site,I can see that Site 1 has more outliers than site 2 and site 3. The mean fish length of the site 1 is 77mm, the mean fish length of the site 2 is 76mm, and the mean fish length of the site 3 is 73mm.
+#### Part 5b)
+```{r Inference for Length}
+Length.S1 <- PDat %>% filter(Site == "Site 1")
+Length.S3 <- PDat %>% filter(Site == "Site 3")
+
+glimpse(Length.S1 )
+glimpse(Length.S3 )
+
+sd(Length.S1$Length)
+sd(Length.S3$Length)
+mean(Length.S1$Length)
+mean(Length.S3$Length)
+
+tsum.test(mean.x=88.32636,s.x=29.88393,n.x=1434,mean.y=78.91771,s.y=24.32039,n.y=2236,conf.level = 0.95)$conf.int
+```
+We are 95% confidence that the difference in mean lengths between the upstream and downstream sites are between 7.56mm and 11.26mm.
+#### Part 5c)
+
+
+```{r test}
+PDat.S1 <- filter(PDat,Site == "Site 1")
+PDat.S3 <- filter(PDat,Site == "Site 3")
+t.test(PDat.S1$Length, PDat.S3$Length)
+```
+
+H0: μ1- μ2=0 versus HA:μ1 - μ2 not equall 0, where mu is the population mean length, and is difference in mean length between the most upstream and most downstream site 1 and site 3. 
+
+The test gives t=9.99 on 2607.3 degrees of freedom. The p-value is 2.2e-16, which is less than the significance level of 0.05. Since the p-value is 2.2e-16, and is less than the alpha 0.05, so we reject the null hypothesis. There is no difference in mean length between the most upstream and most downstream site 1 and site 3. 
+
+#### Part 5d)
+The assumptions I make for the inference in parts (b) and (c) are there is a difference in mean length between the most upsrteam and most downstream site. The assumptions were not meet, because the p value is less than alpha and we rejct the hypothesis.  
+
+#### Part 5e)
+The type of statistical error be making for the test in part (c) is the type l error. This mean there is a difference in mean length between the most upstream and most downstream site, and we should not reject the p-value. 
+
+
+#### Part 5f)
+I think that the estimated population difference in the mean lengths between the upstream and downstream sites has practical significance, because the sites are difference will make water quality different. Water quality may effect the lengths. 
+
+
+### Problem 6: Probable Age Class 2 by Site
+#### Part 6a)
+```{r AgeP 2 by Site}
+
+```
+
+#### Part 6b)
+```{r CI P6}
+
+```
+
+#### Part 6c)
+```{r HT P6}
+
+```
+
+...
+
