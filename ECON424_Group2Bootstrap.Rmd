@@ -1,0 +1,119 @@
+---
+title: "ECON424_Bootstrap"
+output: html_document
+date: "2024-03-01"
+---
+
+```{r}
+options(digits=3, width=70)
+library(boot)  
+library(IntroCompFinR)
+library(PerformanceAnalytics)
+rm(list = ls()) # clean memory from the global environment
+```
+
+```{r}
+nvda.df = read.csv(file="NVDA.csv", header=TRUE, stringsAsFactors=FALSE)
+colnames(nvda.df)[colnames(nvda.df) == "Adj.Close"] ="NVDA"
+nvdaPrices.df = nvda.df[, "NVDA", drop=FALSE]
+rownames(nvdaPrices.df) = nvda.df$Date
+nvdaPrices = xts(nvdaPrices.df, as.Date(rownames(nvdaPrices.df)))
+nvdaMonthly = to.monthly(nvdaPrices, OHLC=FALSE)
+nvdaRet = na.omit(Return.calculate(nvdaMonthly, method="simple"))
+nvdaRetC = log(1 + nvdaRet)
+```
+
+
+```{r}
+#setwd("C:/Users/stlp/Downloads")
+#importing data on seven stocks
+#ss.df <- read.csv(file="Sevenstocks.csv", header=TRUE, stringsAsFactors = FALSE)
+#rownames(ss.df) = ss.df$Date
+#ss.df = ss.df[, 2:8, drop=FALSE] 
+#ss.df = na.omit(ss.df)
+#SevenStocks = xts(ss.df, as.Date(rownames(ss.df), format="%m/%d/%y"))
+#SevenStocksMonthly = to.monthly(SevenStocks, OHLC=FALSE)
+#SevenStocksRet = na.omit(Return.calculate(SevenStocksMonthly, method="simple"))
+#focusing on NVIDIA stock
+#nvdaRetS = SevenStocksRet[,"NVDA"]
+#nvdaRetS = nvdaRetS[-1]
+#nvdaRetC = log(1 + nvdaRetS)
+```
+
+#Plotting CC returns of NVIDIA
+
+```{r}
+my.panel <- function(...) {
+  lines(...)
+  abline(h=0)
+}
+plot.zoo(nvdaRetC, col="blue", lwd=2, main="", panel=my.panel, type="l")
+
+```
+#Model estimates and analytic standard errors
+
+```{r}
+returns.mat = as.matrix(nvdaRet)
+#NVDA = returns.mat[,"NVDA", drop=FALSE]
+
+n.obs = nrow(returns.mat)
+muhat.NVDA = mean(returns.mat)
+sigmahat.NVDA = sd(returns.mat)
+estimate = c(muhat.NVDA, sigmahat.NVDA)
+
+se.muhat.NVDA = sigmahat.NVDA/sqrt(n.obs)
+se.sigmahat.NVDA = sigmahat.NVDA/sqrt(2*n.obs)
+se = c(se.muhat.NVDA, se.sigmahat.NVDA)
+
+ans = rbind(estimate, se)
+colnames(ans) = c("Mu", "Sigma")
+ans
+```
+#Simulating bootstrap
+
+```{r}
+
+B = 999
+muhat.boot = rep(0, B)
+n.obs = nrow(returns.mat)
+set.seed(123)
+for (i in 1:B) {
+  boot.data = sample(returns.mat, n.obs, replace=TRUE)
+  muhat.boot[i] = mean(boot.data)
+}
+
+
+```
+
+#Bootsrap errors and bias estimates
+
+```{r}
+mean(muhat.boot) - muhat.NVDA
+
+
+sd(muhat.boot)
+# analytic SE
+se.muhat.NVDA
+
+```
+#Plotting the bootstrap distribution
+
+```{r}
+par(mfrow=c(1,2))
+  hist(muhat.boot, col="cornflowerblue")
+  abline(v=muhat.NVDA, col="white", lwd=2)
+  qqnorm(muhat.boot, col="cornflowerblue")
+  qqline(muhat.boot)
+par(mfrow=c(1,1))
+
+```
+#95% Confidence Interval for bootstrap
+
+```{r}
+se.boot = sd(muhat.boot)
+lower = muhat.NVDA - 2*se.boot
+upper = muhat.NVDA + 2*se.boot
+width = upper - lower
+c(lower, upper, width)
+
+```
