@@ -1,0 +1,185 @@
+---
+title: "Final Report"
+output:
+  pdf_document: default
+  html_document: default
+date: "2024-03-12"
+---
+Title: Exploring the Dynamics of Irish Opinion on Abortion: A Statistical Analysis of Demographic Factors
+
+Introduction:
+
+In recent decades, the discourse surrounding abortion has emerged as one of the most contentious and polarizing issues globally. Within the context of Ireland, a country with a deeply ingrained cultural, religious, and social fabric, the debate surrounding abortion has been particularly complex and multifaceted. As Ireland has undergone significant social and legislative changes, including the historic 2018 referendum that repealed the Eighth Amendment, which had effectively banned abortion in most circumstances, understanding the nuanced attitudes towards abortion becomes imperative.
+
+This statistical report aims to delve into the intricate relationship between demographic factors and the Irish opinion on abortion. By analyzing key variables such as age, gender, religion, social class, living area, and education, this study seeks to uncover patterns, trends, and disparities that shape the attitudes and beliefs of the Irish population regarding abortion.
+
+Age stands as a pivotal demographic variable, often associated with differing perspectives on social and ethical issues. Gender dynamics play a crucial role, considering the unique experiences and perspectives of men and women in relation to reproductive rights and healthcare. Religion, deeply embedded in the Irish cultural landscape, has historically exerted significant influence on moral frameworks and societal norms surrounding abortion. Social class and living area may offer insights into socioeconomic disparities that intersect with attitudes towards abortion. Education, serving as a proxy for access to information and critical thinking skills, is likely to impact individuals' attitudes towards reproductive rights and autonomy.
+
+Through comprehensive statistical analysis, this report endeavors to provide nuanced insights into how these demographic factors intersect and influence the Irish opinion on abortion. By elucidating these relationships, policymakers, advocacy groups, and healthcare professionals can better understand the diverse perspectives within Irish society and devise informed strategies to address the complex challenges surrounding abortion rights and access. Ultimately, this report aims to contribute to a more nuanced and evidence-based discourse on abortion in Ireland, fostering dialogue, understanding, and progress towards reproductive justice for all.
+
+Analysis/Data Section:
+
+The dataset I will be using regards how the Irish people felt about abortion, after the 2018 referendum decision on the topic. This dataset comes from the Harvard dataverse database. Respondents to this survey were asked many questions before being split into 3 different groups. We won't be looking at the 3 splits at all since the main question, "On a scale from 0 to 10 where 0 means you strongly believe that there should be a total ban on abortion in Ireland, and 10 means that you strongly believe that Abortion should be freely available in Ireland to any woman who wants to have one, where would you place your view?", was asked to everyone. The main relationships of interest will be age, gender, living area (rural or urban), and religious belief (religious or nonreligious).
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+rm(list = ls()) # clean memory from the global environment
+```
+
+
+```{r}
+setwd("~/R STAT 321/Research")
+load("abortion_dataverse_2splits.Rdata")
+#Here is what the data looks like
+summary(x)
+head(x)
+tail(x)
+
+#Main relationships of interest
+#Gender
+x$female <- ifelse(x$gender == "Female", 1, 0)
+
+#Living Area
+x$rural <- ifelse(x$urban == "Rural", 1, 0)
+
+#Religion
+x$religious <- ifelse(x$religion == "Catholic" | x$religion == "Protestant" | x$religion == "Other", 1, 0)
+
+#Age
+age1 <- subset(x, ageCAT == "18-22")
+age2 <- subset(x, ageCAT == "23-24")
+age3 <- subset(x, ageCAT == "25-29")
+age4 <- subset(x, ageCAT == "30-34")
+age5 <- subset(x, ageCAT == "35-44")
+age6 <- subset(x, ageCAT == "45-49")
+age7 <- subset(x, ageCAT == "50-64")
+age8 <- subset(x, ageCAT == "65+")
+
+
+#subsetting our data into our other focus groups
+#Class
+lower <- subset(x, class2 == "F") #Farmers
+middle <- subset(x, class2 == "C2DE") #Skilled, semi-skilled and unskilled manual workers, casual workers, pensioners & unemployed
+upper <- subset(x, class2 == "ABC1") #Managerial, administrative or professional workers
+
+#Education
+active <- subset(x, education == "Still in education")
+third <- subset(x, education == "Finished 3rd level") #Finished college/university
+second <- subset(x, education == "Finished secondary school")
+first <- subset(x, education == "Did not finish secondary school")
+```
+
+The F social class represents farmers. C2DE is for skilled, semi-skilled, and unskilled manual workers, casual workers, pensioners and unemployed respondents. Finally ABC1 is for managerial, administrative or professional workers. In education, finished 3rd level means finished college or university.
+
+## Including Plots
+
+
+```{r}
+boxplot(abortion ~ female + rural, data = x, xlab = "Gender and Living Area", ylab = "Abortion Ideology", main = "Abortion Ideology by Gender and Living Area", names = c("Male Urban", "Female Urban", "Male Rural", "Female Rural"))
+```
+
+```{r}
+#We can do the same for gender and religion
+boxplot(abortion ~ female + religious, data = x, xlab = "Gender and Religion", ylab = "Abortion Ideology", main = "Abortion Ideology by Gender and Religion", names = c("Male Nonreligious", "Female Nonreligious", "Male Religious", "Female Religious"))
+```
+
+```{r}
+#Or again but for living area and Religion
+boxplot(abortion ~ rural + religious, data = x, xlab = "Gender and Religion", ylab = "Abortion Ideology", main = "Abortion Ideology by Gender and Religion", names = c("Urban Nonreligious", "Rural Nonreligious", "Urban Religious", "Rural Religious"))
+```
+We quickly notice some trends between our big focus groups. Females and not religious respondents tend to have a higher score, meaning they are more supportive of abortion in Ireland in general. It's also clear that respondents living in Urban areas tend to be more supportive of abortion in Ireland as well.
+
+```{r}
+tapply(x$abortion, x$female, mean, na.rm = TRUE)
+tapply(x$abortion, x$rural, mean, na.rm = TRUE)
+tapply(x$abortion, x$religious, mean, na.rm = TRUE)
+```
+This quick tapply tool confirms what we've seen in the boxplots.
+
+
+To check the effect of age on abortion ideology in Ireland we can run a regression.
+```{r}
+m1 <- lm(abortion ~ age, data = x)
+summary(m1)
+```
+We see that the intercept here is 9.12 and the slop to be -0.066 meaning that younger respondents tend to be more supportive of abortions in Ireland than elder respondents.
+
+To check class and education we can simply use the mean function on the subsets we've imposed earlier.
+
+```{r}
+#Class
+mean(lower$abortion, na.rm = TRUE)
+mean(middle$abortion, na.rm = TRUE)
+mean(upper$abortion, na.rm = TRUE)
+#Education
+mean(active$abortion, na.rm = TRUE)
+mean(first$abortion, na.rm = TRUE)
+mean(second$abortion, na.rm = TRUE)
+mean(third$abortion, na.rm = TRUE)
+```
+We see that those who are in the ABC1 class tend to be more supportive of abortion in Ireland and those in the F class were least supportive of abortion in Ireland on average. In education, those who were still in education or who had finished third level were more supportive of abortion in Ireland and those who had not finished secondary school were least supportive of abortion in Ireland on average.
+
+```{r}
+boxplot(abortion ~ ageCAT, data = x, ylab = "Abortion Ideology", main = "Boxplot of Age on Abortion Ideology")
+boxplot(abortion ~ education, data = x, ylab = "Abortion Ideology", main = "Boxplot of Education on Abortion Ideology", names = c("3rd Level", "DNF High", "Finished High", "Active"))
+boxplot(abortion ~ class2, data = x, ylab = "Aboriton Ideology", main = "Boxplot of Class on Abortion Ideology")
+```
+
+These boxplots support what we've seen in our earlier assumptions with the mean tool and regression.
+
+Results Section:
+```{r}
+x$col[x$female == 0] <- "blue"
+x$col[x$female == 1] <- "red"
+plot(x$age, x$abortion, col = x$col, pch = c(1, 1), xlab = "Ages of Respondents", ylab = "Abortion Ideology", main = "Effects of Ages of Respondents on Abortion Ideology")
+```
+
+```{r}
+x$col[x$rural == 0] <- "blue"
+x$col[x$rural == 1] <- "red"
+plot(x$age, x$abortion, col = x$col, pch = c(1, 1), xlab = "Ages of Respondents", ylab = "Abortion Ideology", main = "Effects of Ages of Respondents on Abortion Ideology")
+```
+
+```{r}
+x$col[x$religion == 0] <- "blue"
+x$col[x$religion == 1] <- "red"
+plot(x$age, x$abortion, col = x$col, pch = c(1, 1), xlab = "Ages of Respondents", ylab = "Abortion Ideology", main = "Effects of Ages of Respondents on Abortion Ideology")
+```
+We notice that blue points tend to be more to the top of the graph except for gender. Again this shows us from our earlier analysis that females, nonreligious and urban living respondents tend to be more supportive of abortion. For ages we notice that the points are almost evenly spread out with more support of abortion toward younger age groups.
+
+To look just specifically on age and the regression we ran earlier we can plot this:
+```{r}
+plot(x$age, x$abortion, abline(m1), pch = c(1, 1), xlab = "Ages of Respondents", ylab = "Abortion Ideology", main = "Effects of Ages of Respondents on Abortion Ideology")
+```
+ The regression line shows us that as the respondents get older there is less support of abortion. However, this it is very hard to notice this trend with the points alone. However, when we seperated age into categoriesin our earlier boxplot, we did notice this trend more easily. Here is a look at that.
+ 
+ 
+```{r}
+boxplot(abortion ~ ageCAT, data = x, ylab = "Abortion Ideology", main = "Boxplot of Age on Abortion Ideology")
+abline(m1)
+```
+Now our regression line makes a bit more sense. However, what is the true value of the effect of age on abortion ideology in Ireland? In our regression, we should perhaps add more factors, such as the ones we looked at earlier.
+ 
+ 
+```{r}
+summary(m1)
+m2 <- lm(abortion ~ age + female, data = x)
+summary(m2)
+
+m3 <- lm(abortion ~ age + rural, data = x)
+summary(m3)
+
+m4 <- lm(abortion ~ age + religious, data = x)
+summary(m4)
+
+m5 <- lm(abortion ~ age + rural + religious + female, data = x)
+summary(m5)
+```
+As we added more variable to our regression line, we notice that age does not change greatly. It remains around -0.06 but decreases from our original regression line. When we added all our variables of interest we noticed that age was at its lowest absolute value (-0.057), showing us that age had less and less of an effect as we continued; meaning that every time we increase age by 1, including all the other factors, then abortion ideology decreased by 0.057. On another note, we notice that age has the least effect on abortion ideology. Gender, religious belief, and living area show much greater effect on how respondents responded. Thus, the greatest effect on abortion ideology is religion (-1.78), followed by gender (0.43), then living area (-0.396), and finally age (-0.057). I notice that the intercept starts slightly above 10 which shouldn't be possible. However, considering the survey is only for Irish people above the age of 18 we know that the true value of the intercept is lower than 10.
+
+Note: In all of the regression analysis, the p-values on every coefficient were well below 0.05, so statistical significance holds. 
+
+
+Conclusion:
+
+  In my research of Abortion Ideology in Ireland, I found that there were many variables that had effects on how respondents to the survey felt about abortion. I have found support in my research for my original hypothesis. However, for certain aspects, such as education and social class, I have very limited findings (means and boxplots). Further research on these two variables must be done in order to strongly affirm my hypothesis. However, on the other variables- religion, age, gender, and living area- my findings have been a bit more extensive. I have found that the variable with greatest effect on abortion ideology is religion, then gender, living area, and finally age. It seemed that age had little effect on abortion ideology especially compared to other variables. However, my research does not include many other factors that were in the survey (such as number of children a respondent has). These factors could have an influence on the variables that I have studied and need investigation done upon them.
+
